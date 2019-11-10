@@ -9,26 +9,33 @@ import pychromecast
 print ("-- Discovering Devices\n")
 chromecasts = pychromecast.get_chromecasts()
 
-device_map={"titan":-23,
+device_map={"titan":-20,
 			"rhea":-4,
 			"lapetus":14,
-			"enceladus":18
+			"enceladus":20
 }
 
 mid_vol=50
 vol_list=[]
 
 #This gets the average volume of the devices in the room
+# for device in chromecasts:
+# 	if device.device.friendly_name in device_map: #if its one of mine
+# 		time.sleep(1)
+# 		device.wait()
+# 		vol_list.append(int(device.status.volume_level*100))
+#actually calculates the avages, defaults to 50% if theres something wrong
+# try:
+# 	mid_vol=sum(vol_list)/len(vol_list)
+# except:
+# 	pass
+
+
 for device in chromecasts:
-	if device.device.friendly_name in device_map: #if its one of mine
+	if device.device.friendly_name =="titan": #if its one of mine
 		time.sleep(1)
 		device.wait()
-		vol_list.append(int(device.status.volume_level*100))
-#actually calculates the avages, defaults to 50% if theres something wrong
-try:
-	mid_vol=sum(vol_list)/len(vol_list)
-except:
-	pass
+		mid_vol=int(device.status.volume_level*100)-device_map.get(device.device.friendly_name) #generates a middle based on titan volume
 
 for device in chromecasts:
 	#This actually applies the scaled volumes
