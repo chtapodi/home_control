@@ -9,10 +9,11 @@ import pychromecast
 print ("-- Discovering Devices\n")
 chromecasts = pychromecast.get_chromecasts()
 
-device_map={"titan":-20,
-			"rhea":-4,
-			"lapetus":14,
-			"enceladus":20
+base_speaker="titan"
+device_map={"titan":0,
+			"rhea":26,
+			"lapetus":48,
+			"enceladus":40
 }
 
 mid_vol=50
@@ -29,7 +30,7 @@ def connect() :
 		if device.device.friendly_name in device_map: #if its one of mine
 			connected_devices.append(device)
 			print(device)
-			if device.device.friendly_name =="titan": #if its one of mine
+			if device.device.friendly_name ==base_speaker: #if its one of mine
 				print("confirmed")
 				titan=device
 
@@ -41,25 +42,59 @@ def get_vol(device) :
 	return vol
 
 
+def get_dist(coord_a, coord_b) :
+	x_diff=coord_a[0]-coord_b[0]
+	y_diff=coord_a[1]-coord_b[1]
+	return sqrt(x_diff**2 +y_diff**2)
+
+def dist_to_vol() :
+	
+
 def set_vol(device, vol) :
-	device.set_vol(vol)
+	device.wait()
+	# time.sleep(1)
+	if vol>1 :
+		vol=1
+	elif vol<0 :
+		vol=0
+	device.set_volume(vol)
 
 
 def equalize_devices(vol) :
 	for device in connected_devices :
 		name=device.device.friendly_name
-		new_vol=(device_map.get(name)+vol)/100
-		print("set {0} to {1}".format(name, vol))
+		modifier=device_map.get(name)
+		modified=(modifier+vol)
+		new_vol=modified/100
+		set_vol(device, new_vol)
+		# print("set {0} to {1}".format(name, new_vol))
+		visualize(name, new_vol)
+
+
+def visualize(name, ratio) :
+	index=int(ratio*10)
+	to_print=[]
+	for i in range(10) :
+		if (i==index) :
+			to_print.append("X")
+
+		else :
+			to_print.append("#")
+	to_print= ''.join(to_print)
+	print("{}\t".format(to_print), name)
+
 
 
 #START
 connect()
-print("YEEET",titan)
 while True :
 	vol=get_vol(titan)
+
 	if vol!=prev_vol :
+		print("\n")
 		equalize_devices(vol)
 		prev_vol=vol
+
 
 
 
