@@ -76,19 +76,19 @@ def visualize(name, ratio) :
 	print("{}\t".format(to_print), name)
 
 
-
+if __name__ == "__main__":
 #START
-connect()
-while True :
-	vol=get_vol(titan)
+	connect()
+	while True :
+		vol=get_vol(titan)
 
-	if vol!=prev_vol :
-		print("\n")
-		equalize_devices(vol)
-		prev_vol=vol
+		if vol!=prev_vol :
+			print("\n")
+			equalize_devices(vol)
+			prev_vol=vol
 
 
-
+main()
 
 
 #
