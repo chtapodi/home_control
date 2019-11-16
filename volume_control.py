@@ -16,6 +16,20 @@ device_map={"titan":0,
 			"enceladus":40
 }
 
+#[dist, slope, offset]
+func_map={"titan":[1.41, 0.323, 43.6],
+			"rhea":[2.23, 0.236, 43.4],
+			"lapetus":[4.47, 0.236, 41.0],
+			"enceladus":[7.07, 0.236, 30]
+}
+
+
+coord_map={"titan":[3,0],
+			"rhea":[5,3],
+			"lapetus":[2,5],
+			"enceladus":[3,8]
+}
+
 mid_vol=50
 vol_list=[]
 
@@ -35,21 +49,62 @@ def connect() :
 				titan=device
 
 
-def get_vol(device) :
+
+
+#gets the db from volume at percent
+def get_percent_at_dist(name, db, dist) :
+	base_dist=get_base_dist(name)
+	slope=get_base_slope(name)
+	equiv_db=db/((base_dist/dist)**2)
+	percent=get_equiv_percent(equiv_db, slope, offset)
+	return percent
+
+
+#gets the db from volume at percent
+def get_db_at_dist(name, percent, dist) :
+	base_dist=get_base_dist(name)
+	slope=get_base_slope(name)
+	base_db=get_base_db(percent, slope, base_dist)
+	db=((base_dist/dist)**2)*base_db
+	return db
+
+
+
+
+#gets the volume from a device
+def get_device_vol(device) :
 	# print('\n',device)
 	device.wait()
 	vol=int(device.status.volume_level*100)
 	return vol
 
+#gets the base distance param
+def get_base_dist(name) :
+	return func_map.get(name)[0]
 
+#gets the base offset param
+def get_base_offset(name) :
+	return func_map.get(name)[2]
+
+#gets the base slope param
+def get_base_slope(name) :
+	return func_map.get(name)[1]
+
+#gets the base volume at a percentage
+def get_base_db(percent, slope, offset) :
+	return percent*slope + offset
+
+#gets the base volume at a percentage
+def get_equiv_percent(db, slope, offset) :
+	return (db-offset)/slope
+
+#gets the distance between two coords
 def get_dist(coord_a, coord_b) :
 	x_diff=coord_a[0]-coord_b[0]
 	y_diff=coord_a[1]-coord_b[1]
 	return sqrt(x_diff**2 +y_diff**2)
 
-def dist_to_vol() :
-	
-
+#sets the volume of a device
 def set_vol(device, vol) :
 	device.wait()
 	# time.sleep(1)
@@ -59,6 +114,9 @@ def set_vol(device, vol) :
 		vol=0
 	device.set_volume(vol)
 
+def equalize_to_point(coords) :
+	reference_vol=
+	for
 
 def equalize_devices(vol) :
 	for device in connected_devices :
@@ -88,7 +146,7 @@ def visualize(name, ratio) :
 #START
 connect()
 while True :
-	vol=get_vol(titan)
+	vol=get_device_vol(titan)
 
 	if vol!=prev_vol :
 		print("\n")
@@ -98,29 +156,4 @@ while True :
 
 
 
-
-#
-# for device in chromecasts:
-# 	if device.device.friendly_name =="titan": #if its one of mine
-# 		time.sleep(1)
-# 		device.wait()
-# 		mid_vol=int(device.status.volume_level*100)-device_map.get(device.device.friendly_name) #generates a middle based on titan volume
-#
-# for device in chromecasts:
-# 	#This actually applies the scaled volumes
-# 	if device.device.friendly_name in device_map: #if its one of mine
-# 		# These sleeps seem necessary.
-# 		time.sleep(1)
-# 		device.wait()
-# 		new_vol=(device_map.get(device.device.friendly_name)+mid_vol)/100
-# 		if new_vol>1 :
-# 			new_vol=1
-# 		elif new_vol<0 :
-# 			new_vol=0
-# 		device.set_volume(new_vol)
-# 		time.sleep(1)
-# 		print("set {0} to {1}".format(device.device.friendly_name, new_vol*100))
-#
-
-# Apparently needed so the script can terminate cool
 time.sleep(1)
