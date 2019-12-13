@@ -1,50 +1,133 @@
 from __future__ import print_function
 import time
+import argparse
 import sys
+import readchar
 import pychromecast
+import math
+import matplotlib.pyplot as plt
+
+parser = argparse.ArgumentParser(description='Controls volume foci of google devices')
+
+parser.add_argument('-v', action="store", dest="volume", type=float, help='directly input a volume : 0-100')
+
+parser.add_argument('-i', action="store_true", dest="interactive", default=False, help='interactive mode, lets you adjust volume and reposition')
+
+parser.add_argument('-l', action="store_true", dest="loop", default=False, help='loop mode, continually attempts to adjust volume')
 
 
-#Provided by this friendly person https://www.reddit.com/r/googlehome/comments/8b0b4o/python_script_to_manage_the_volume_of_multiple/
-# Find Devices
-print ("-- Discovering Devices\n")
-chromecasts = pychromecast.get_chromecasts()
+args = parser.parse_args()
 
-base_speaker="titan"
-device_map={"titan":0,
-			"rhea":16,
-			"lapetus":34,
-			"enceladus":40
+
+#[coordinates, max_distance]
+#The units do not matter as long as they are all the same
+# device_settings={"titan":[[3,0],20],
+# 			"rhea":[[5,3],15],
+# 			"lapetus":[[2,5],15],
+# 			"enceladus":[[3,8],15]
+# }
+
+#[coordinates, max_distance]
+#The units do not matter as long as they are all the same
+device_settings={"ceres":[[0,0],20],
+			"Kitchen display":[[20,5],15],
+			"Family Room TV":[[0,12],15]
 }
+## TODO: Read this in from a config file
 
-mid_vol=50
-vol_list=[]
-
-connected_devices=[]
-titan=-1
-prev_vol=0
+connected_devices={}
 
 def connect() :
-	global titan
+
+	chromecasts = pychromecast.get_chromecasts()
 	for device in chromecasts:
 		#This actually applies the scaled volumes
-		if device.device.friendly_name in device_map: #if its one of mine
-			connected_devices.append(device)
-			print(device)
-			if device.device.friendly_name ==base_speaker: #if its one of mine
-				print("confirmed")
-				titan=device
+		name=device.device.friendly_name
+		if name in device_settings: #if its one of mine
+			connected_devices[name]=device
+			print("connected to {0}/{1}".format(len(connected_devices), len(device_settings)))
 
 
-def get_vol(device) :
+#equalizes all devices to coordinates
+#returns the percentage that everything should be equalized to
+def equalize_to_point(vol_mult, point) :
+	for name in connected_devices :
+		device=connected_devices[name]
+		#distance to device
+		device_dist=get_device_dist(name, point)
+
+		new_vol=device_vol_scale(name, device_dist, vol_mult)
+		set_vol(device, new_vol)
+
+
+#Returns the volume of the device to center at the point in relation to the volume multiplier
+def device_vol_scale(name, distance, vol_mult):
+	device_max_dist=get_max_dist(name)
+
+	#This uses a linear relationship, I may update this to be logarithmic
+	new_vol=translate(distance, 0, device_max_dist,0,1)
+	scaled_vol=new_vol*vol_mult
+	return scaled_vol
+
+
+#calculates the vol mult from a device
+def get_device_vol_mult(name, point) :
+	device=connected_devices[name]
+	device_dist=get_device_dist(name, point)
+	device_max_dist=get_max_dist(name)
+	calc_vol=translate(device_dist, 0, device_max_dist,0,1)
+	real_vol=get_device_vol(device)
+	estimated_mult=real_vol/calc_vol
+	return estimated_mult
+
+#determines a base multiplier
+def get_base_mult(point) :
+	#finds the closest device to the point
+	closest=None
+	min_dist=sys.maxsize #all distances will be less than this
+	for name in connected_devices :
+		dist=get_device_dist(name, point)
+		if min_dist>dist :
+			min_dist=dist
+			closest=name
+	#estimates the mult val for this device.
+	closest_mult=get_device_vol_mult(closest, point)
+	print(closest)
+	return closest_mult
+
+
+
+#gets the volume from a device, 0.0->1.0
+def get_device_vol(device) :
 	# print('\n',device)
 	device.wait()
-	vol=int(device.status.volume_level*100)
+	vol=device.status.volume_level
 	return vol
 
 
+#gets the coordinates of a device from it's name
+def get_device_coords(name) :
+	return device_settings.get(name)[0]
+
+
+#gets the max distance param, which represents the distance at which 100% sounds like a good value for 100%
+def get_max_dist(name) :
+	dist=device_settings.get(name)[1]
+	return dist
+
+def get_device_dist(name, point) :
+	coords=get_device_coords(name)
+	return get_dist(coords, point)
+
+#gets the distance between two coords
+def get_dist(coord_a, coord_b) :
+	x_diff=coord_a[0]-coord_b[0]
+	y_diff=coord_a[1]-coord_b[1]
+	return math.sqrt(x_diff**2 +y_diff**2)
+
+#sets the volume of a device
 def set_vol(device, vol) :
 	device.wait()
-	# time.sleep(1)
 	if vol>1 :
 		vol=1
 	elif vol<0 :
@@ -52,67 +135,129 @@ def set_vol(device, vol) :
 	device.set_volume(vol)
 
 
-def equalize_devices(vol) :
-	for device in connected_devices :
-		name=device.device.friendly_name
-		modifier=device_map.get(name)
-		modified=(modifier+vol)
-		new_vol=modified/100
-		set_vol(device, new_vol)
-		# print("set {0} to {1}".format(name, new_vol))
-		visualize(name, new_vol)
+#taken from https://stackoverflow.com/a/1969274 because google is faster than memory
+#scales from one range of values to another
+def translate(value, leftMin, leftMax, rightMin, rightMax):
+	# Figure out how 'wide' each range is
+	leftSpan = leftMax - leftMin
+	rightSpan = rightMax - rightMin
 
+	# Convert the left range into a 0-1 range (float)
+	valueScaled = float(value - leftMin) / float(leftSpan)
+	# Convert the 0-1 range into a value in the right range.
+	return rightMin + (valueScaled * rightSpan)
 
-def visualize(name, ratio) :
+#prints out a vague visualization of volume.
+def text_visualize(name, ratio) :
 	index=int(ratio*10)
 	to_print=[]
-	for i in range(10) :
+	for i in range(0,10) :
 		if (i==index) :
 			to_print.append("X")
-
 		else :
 			to_print.append("#")
 	to_print= ''.join(to_print)
 	print("{}\t".format(to_print), name)
 
 
-if __name__ == "__main__":
-#START
+#Graphs volume representations and locations of devices, good for troubleshooting
+def visualize(point)  :
+	fig, ax = plt.subplots(1, 1)
+	plt.ylim(0,20)
+	plt.xlim(0,20)
+	plt.gca().set_aspect('equal', adjustable='box')
+	plt.grid(linestyle='-', linewidth=1)
+	for name in connected_devices :
+		device=connected_devices[name]
+		vol=get_device_vol(device)
+		coords=coords=get_device_coords(name)
+		device_max_dist=get_max_dist(name)
+
+		radius=translate(vol,0,1, 0, device_max_dist)
+
+		circle1=plt.Circle(coords,radius, fill=False)
+
+		plt.gcf().gca().add_artist(circle1)
+
+	plt.scatter(point[0],point[1])
+	plt.savefig("graph.png")
+
+
+
+def main() :
+	#This is a placeholder until I have a dynamic method for tracking my location
+	#START
+	point=[7,5] #about where I sit in the kitchen
+
+	#if a volume is provided via command line, use it, otherwise use 60%
+	vol_mult=.6
+
+	if args.volume!=None :
+		vol_mult=args.volume/100
+
+	#connects to devices
 	connect()
-	while True :
-		vol=get_vol(titan)
 
-		if vol!=prev_vol :
-			print("\n")
-			equalize_devices(vol)
-			prev_vol=vol
+	#interactive mode
+	if args.interactive :
+		print("entering interactive mode")
+		if args.loop==False :
+			print("q & e control volume")
+		else :
+			print("loop mode is activated, this will only update when position is updated")
+		print("wasd controls location")
+		print("c exits")
+		x=point[0]
+		y=point[1]
+		while True :
+			try :
+				key=readchar.readkey()
+				if key=='w' : #point up
+					y+=1
+				elif key=='s' : #point down
+					y-=1
+				elif key=='a' : #point left
+					x-=1
+				elif key=='d' : #point right
+					x+=1
+				elif key=='c' :
+					break
+
+				if args.loop==False :
+					if key=='e' :#volume up
+						vol_mult+=.05
+					elif key=='q' : #volume down
+						vol_mult-=.05
+				else :
+					base_mult=get_base_mult([x,y])
+					if base_mult!=vol_mult :
+						vol_mult=base_mult
+						equalize_to_point(vol_mult, [x,y])
+
+				print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
+				equalize_to_point(vol_mult, [x,y])
+				time.sleep(.1)
+
+			except KeyboardInterrupt:
+				pass
+	elif args.loop :
+		print("entering loop mode")
+		try :
+			while True :
+				base_mult=get_base_mult(point)
+				if base_mult!=vol_mult :
+					vol_mult=base_mult
+					equalize_to_point(vol_mult, point)
+
+		except KeyboardInterrupt:
+			pass
+
+	else :
+		equalize_to_point(vol_mult, point)
+		# visualize(point)
 
 
-main()
 
-
-#
-# for device in chromecasts:
-# 	if device.device.friendly_name =="titan": #if its one of mine
-# 		time.sleep(1)
-# 		device.wait()
-# 		mid_vol=int(device.status.volume_level*100)-device_map.get(device.device.friendly_name) #generates a middle based on titan volume
-#
-# for device in chromecasts:
-# 	#This actually applies the scaled volumes
-# 	if device.device.friendly_name in device_map: #if its one of mine
-# 		# These sleeps seem necessary.
-# 		time.sleep(1)
-# 		device.wait()
-# 		new_vol=(device_map.get(device.device.friendly_name)+mid_vol)/100
-# 		if new_vol>1 :
-# 			new_vol=1
-# 		elif new_vol<0 :
-# 			new_vol=0
-# 		device.set_volume(new_vol)
-# 		time.sleep(1)
-# 		print("set {0} to {1}".format(device.device.friendly_name, new_vol*100))
-#
-
-# Apparently needed so the script can terminate cool
-time.sleep(1)
+if __name__ == "__main__":
+	# execute only if run as a script
+	main()
