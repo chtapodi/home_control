@@ -15,12 +15,13 @@ import matplotlib.pyplot as plt
 # 			"enceladus":[[3,8],15]
 # }
 
-
+#[coordinates, max_distance]
+#The units do not matter as long as they are all the same
 device_settings={"ceres":[[0,0],20],
 			"Kitchen display":[[20,5],15],
 			"Family Room TV":[[0,12],25]
 }
-
+## TODO: Read this in from a config file
 
 connected_devices={}
 
@@ -46,8 +47,6 @@ def equalize_to_point(vol_mult, point) :
 		set_vol(device, new_vol)
 
 
-
-
 #Returns the volume of the device to center at the point in relation to the volume multiplier
 def device_vol_scale(name, distance, vol_mult):
 	device_max_dist=get_max_dist(name)
@@ -68,7 +67,6 @@ def get_device_vol(device) :
 	device.wait()
 	vol=device.status.volume_level
 	return vol
-
 
 
 #gets the coordinates of a device from it's name
@@ -121,6 +119,8 @@ def text_visualize(name, ratio) :
 	to_print= ''.join(to_print)
 	print("{}\t".format(to_print), name)
 
+
+#Graphs volume representations and locations of devices, good for troubleshooting
 def visualize(point)  :
 	fig, ax = plt.subplots(1, 1)
 	plt.ylim(0,20)
@@ -145,6 +145,7 @@ def visualize(point)  :
 
 
 def main() :
+	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
 	connect()
 	vol_mult=.6
