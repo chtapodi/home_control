@@ -63,11 +63,11 @@ def device_vol_scale(name, distance, vol_mult):
 
 
 #gets the volume from a device, 0.0->1.0
-def get_device_vol(device, vol_mult) :
+def get_device_vol(device) :
 	# print('\n',device)
 	device.wait()
 	vol=device.status.volume_level
-	return vol/vol_mult
+	return vol
 
 
 
@@ -75,7 +75,7 @@ def get_device_vol(device, vol_mult) :
 def get_device_coords(name) :
 	return device_settings.get(name)[0]
 
-	
+
 #gets the max distance param, which represents the distance at which 100% sounds like a good value for 100%
 def get_max_dist(name) :
 	dist=device_settings.get(name)[1]
@@ -121,18 +121,36 @@ def text_visualize(name, ratio) :
 	to_print= ''.join(to_print)
 	print("{}\t".format(to_print), name)
 
-def visualize()  :
-	for device in connected_devices.value() :
+def visualize(point)  :
+	fig, ax = plt.subplots(1, 1)
+	plt.ylim(0,20)
+	plt.xlim(0,20)
+	plt.gca().set_aspect('equal', adjustable='box')
+	plt.grid(linestyle='-', linewidth=1)
+	for name in connected_devices :
+		device=connected_devices[name]
+		vol=get_device_vol(device)
+		coords=coords=get_device_coords(name)
+		device_max_dist=get_max_dist(name)
+
+		radius=translate(vol,0,1, 0, device_max_dist)
+
+		circle1=plt.Circle(coords,radius, fill=False)
+
+		plt.gcf().gca().add_artist(circle1)
+
+	plt.scatter(point[0],point[1])
+	plt.savefig("graph.png")
 
 
 
 def main() :
 	#START
 	connect()
-	vol_mult=.5
+	vol_mult=1
 	point=[7,5] #about where I sit in the kitchen
 	equalize_to_point(vol_mult, point)
-
+	visualize(point)
 	time.sleep(1)
 
 
