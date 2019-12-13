@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 
 device_settings={"ceres":[[0,0],20],
-			"Kitchen display":[[20,5],10],
+			"Kitchen display":[[20,5],15],
 			"Family Room TV":[[0,12],25]
 }
 
@@ -147,7 +147,7 @@ def visualize(point)  :
 def main() :
 	#START
 	connect()
-	vol_mult=1
+	vol_mult=.6
 	point=[7,5] #about where I sit in the kitchen
 	equalize_to_point(vol_mult, point)
 	visualize(point)
