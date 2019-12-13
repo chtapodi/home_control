@@ -9,9 +9,13 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Controls volume foci of google devices')
 
-parser.add_argument('-v', action="store", dest="volume", type=float)
+parser.add_argument('-v', action="store", dest="volume", type=float, help='directly input a volume : 0-100')
 
-parser.add_argument('-i', action="store_true", dest="interactive", default=False, help='interactive mode')
+parser.add_argument('-i', action="store_true", dest="interactive", default=False, help='interactive mode, lets you adjust volume and reposition')
+
+parser.add_argument('-l', action="store_true", dest="loop", default=False, help='loop mode, continually attempts to adjust volume')
+
+
 args = parser.parse_args()
 
 
@@ -34,13 +38,14 @@ device_settings={"ceres":[[0,0],20],
 connected_devices={}
 
 def connect() :
+
 	chromecasts = pychromecast.get_chromecasts()
 	for device in chromecasts:
 		#This actually applies the scaled volumes
 		name=device.device.friendly_name
 		if name in device_settings: #if its one of mine
 			connected_devices[name]=device
-			# print("connected to ", device)
+			print("connected to {0}/{1}".format(len(connected_devices), len(device_settings)))
 
 
 #equalizes all devices to coordinates
@@ -49,8 +54,8 @@ def equalize_to_point(vol_mult, point) :
 	for name in connected_devices :
 		device=connected_devices[name]
 		#distance to device
-		coords=get_device_coords(name)
-		device_dist=get_dist(coords, point)
+		device_dist=get_device_dist(name, point)
+
 		new_vol=device_vol_scale(name, device_dist, vol_mult)
 		set_vol(device, new_vol)
 
@@ -63,6 +68,32 @@ def device_vol_scale(name, distance, vol_mult):
 	new_vol=translate(distance, 0, device_max_dist,0,1)
 	scaled_vol=new_vol*vol_mult
 	return scaled_vol
+
+
+#calculates the vol mult from a device
+def get_device_vol_mult(name, point) :
+	device=connected_devices[name]
+	device_dist=get_device_dist(name, point)
+	device_max_dist=get_max_dist(name)
+	calc_vol=translate(device_dist, 0, device_max_dist,0,1)
+	real_vol=get_device_vol(device)
+	estimated_mult=real_vol/calc_vol
+	return estimated_mult
+
+#determines a base multiplier
+def get_base_mult(point) :
+	#finds the closest device to the point
+	closest=None
+	min_dist=sys.maxsize #all distances will be less than this
+	for name in connected_devices :
+		dist=get_device_dist(name, point)
+		if min_dist>dist :
+			min_dist=dist
+			closest=name
+	#estimates the mult val for this device.
+	closest_mult=get_device_vol_mult(closest, point)
+	print(closest)
+	return closest_mult
 
 
 
@@ -83,6 +114,10 @@ def get_device_coords(name) :
 def get_max_dist(name) :
 	dist=device_settings.get(name)[1]
 	return dist
+
+def get_device_dist(name, point) :
+	coords=get_device_coords(name)
+	return get_dist(coords, point)
 
 #gets the distance between two coords
 def get_dist(coord_a, coord_b) :
@@ -152,18 +187,26 @@ def visualize(point)  :
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
+	point=[7,5] #about where I sit in the kitchen
 
 	#if a volume is provided via command line, use it, otherwise use 60%
 	vol_mult=.6
+
 	if args.volume!=None :
 		vol_mult=args.volume/100
-	connect()
-	point=[7,5] #about where I sit in the kitchen
 
+	#connects to devices
+	connect()
+
+	#interactive mode
 	if args.interactive :
 		print("entering interactive mode")
-		print("q & e control volume")
+		if args.loop==False :
+			print("q & e control volume")
+		else :
+			print("loop mode is activated, this will only update when position is updated")
 		print("wasd controls location")
+		print("c exits")
 		x=point[0]
 		y=point[1]
 		while True :
@@ -177,12 +220,19 @@ def main() :
 					x-=1
 				elif key=='d' : #point right
 					x+=1
-				elif key=='e' :#volume up
-					vol_mult+=.05
-				elif key=='q' : #volume down
-					vol_mult-=.05
-				else :
+				elif key=='c' :
 					break
+
+				if args.loop==False :
+					if key=='e' :#volume up
+						vol_mult+=.05
+					elif key=='q' : #volume down
+						vol_mult-=.05
+				else :
+					base_mult=get_base_mult([x,y])
+					if base_mult!=vol_mult :
+						vol_mult=base_mult
+						equalize_to_point(vol_mult, [x,y])
 
 				print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
 				equalize_to_point(vol_mult, [x,y])
@@ -190,10 +240,21 @@ def main() :
 
 			except KeyboardInterrupt:
 				pass
+	elif args.loop :
+		print("entering loop mode")
+		try :
+			while True :
+				base_mult=get_base_mult(point)
+				if base_mult!=vol_mult :
+					vol_mult=base_mult
+					equalize_to_point(vol_mult, point)
+
+		except KeyboardInterrupt:
+			pass
+
 	else :
 		equalize_to_point(vol_mult, point)
 		# visualize(point)
-		time.sleep(1)
 
 
 
