@@ -1,10 +1,18 @@
 from __future__ import print_function
 import time
+import argparse
 import sys
+import readchar
 import pychromecast
 import math
 import matplotlib.pyplot as plt
 
+parser = argparse.ArgumentParser(description='Controls volume foci of google devices')
+
+parser.add_argument('-v', action="store", dest="volume", type=float)
+
+parser.add_argument('-i', action="store_true", dest="interactive", default=False, help='interactive mode')
+args = parser.parse_args()
 
 
 #[coordinates, max_distance]
@@ -19,7 +27,7 @@ import matplotlib.pyplot as plt
 #The units do not matter as long as they are all the same
 device_settings={"ceres":[[0,0],20],
 			"Kitchen display":[[20,5],15],
-			"Family Room TV":[[0,12],25]
+			"Family Room TV":[[0,12],15]
 }
 ## TODO: Read this in from a config file
 
@@ -53,10 +61,7 @@ def device_vol_scale(name, distance, vol_mult):
 
 	#This uses a linear relationship, I may update this to be logarithmic
 	new_vol=translate(distance, 0, device_max_dist,0,1)
-	print("vol for ", name, " ", new_vol)
-
 	scaled_vol=new_vol*vol_mult
-	print("scaled vol", scaled_vol)
 	return scaled_vol
 
 
@@ -147,12 +152,48 @@ def visualize(point)  :
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
-	connect()
+
+	#if a volume is provided via command line, use it, otherwise use 60%
 	vol_mult=.6
+	if args.volume!=None :
+		vol_mult=args.volume/100
+	connect()
 	point=[7,5] #about where I sit in the kitchen
-	equalize_to_point(vol_mult, point)
-	visualize(point)
-	time.sleep(1)
+
+	if args.interactive :
+		print("entering interactive mode")
+		print("q & e control volume")
+		print("wasd controls location")
+		x=point[0]
+		y=point[1]
+		while True :
+			try :
+				key=readchar.readkey()
+				if key=='w' : #point up
+					y+=1
+				elif key=='s' : #point down
+					y-=1
+				elif key=='a' : #point left
+					x-=1
+				elif key=='d' : #point right
+					x+=1
+				elif key=='e' :#volume up
+					vol_mult+=.05
+				elif key=='q' : #volume down
+					vol_mult-=.05
+				else :
+					break
+
+				print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
+				equalize_to_point(vol_mult, [x,y])
+				time.sleep(.1)
+
+			except KeyboardInterrupt:
+				pass
+	else :
+		equalize_to_point(vol_mult, point)
+		# visualize(point)
+		time.sleep(1)
 
 
 
