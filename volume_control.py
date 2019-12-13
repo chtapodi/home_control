@@ -189,14 +189,17 @@ def main() :
 	#START
 	point=[7,5] #about where I sit in the kitchen
 
-	#if a volume is provided via command line, use it, otherwise use 60%
-	vol_mult=.6
 
-	if args.volume!=None :
-		vol_mult=args.volume/100
 
 	#connects to devices
 	connect()
+
+
+	#if a volume is provided via command line, use it, otherwise use volume of closest device
+	vol_mult=get_base_mult(point)
+
+	if args.volume!=None :
+		vol_mult=args.volume/100
 
 	#interactive mode
 	if args.interactive :
