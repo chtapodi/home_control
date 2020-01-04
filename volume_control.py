@@ -16,6 +16,12 @@ parser.add_argument('-i', action="store_true", dest="interactive", default=False
 parser.add_argument('-l', action="store_true", dest="loop", default=False, help='loop mode, continually attempts to adjust volume')
 
 
+
+parser.add_argument('-p', '--position', nargs=2, metavar=('x', 'y'), help='Allows the input of a new point, syntax is x y')
+
+parser.add_argument('-s', '--scan', action="store_true", dest="scan", default=False, help='Lists all detected cast device')
+
+
 args = parser.parse_args()
 
 
@@ -28,11 +34,21 @@ args = parser.parse_args()
 # }
 
 #[coordinates, max_distance]
+# #The units do not matter as long as they are all the same
+# device_settings={"ceres":[[0,0],20],
+# 			"Kitchen display":[[20,5],15],
+# 			"Family Room TV":[[0,12],15]
+# }
+
+
+#[coordinates, max_distance]
 #The units do not matter as long as they are all the same
-device_settings={"ceres":[[0,0],20],
-			"Kitchen display":[[20,5],15],
-			"Family Room TV":[[0,12],15]
+device_settings={"titan":[[7,0],25],
+			"janus & epimetheus":[[4,7],15],
+			"Ledge":[[4,23],15]
 }
+
+
 ## TODO: Read this in from a config file
 
 connected_devices={}
@@ -43,6 +59,8 @@ def connect() :
 	for device in chromecasts:
 		#This actually applies the scaled volumes
 		name=device.device.friendly_name
+		if args.scan :
+			print( "Detected ", name)
 		if name in device_settings: #if its one of mine
 			connected_devices[name]=device
 			print("connected to {0}/{1}".format(len(connected_devices), len(device_settings)))
@@ -183,6 +201,48 @@ def visualize(point)  :
 	plt.savefig("graph.png")
 
 
+def interactive_mode(point, vol_mult) :
+	print("entering interactive mode")
+	if args.loop==False :
+		print("q & e control volume")
+	else :
+		print("loop mode is activated, this will only update when position is updated")
+	print("wasd controls location")
+	print("c exits")
+	x=point[0]
+	y=point[1]
+	while True :
+		try :
+			key=readchar.readkey()
+			if key=='w' : #point up
+				y+=1
+			elif key=='s' : #point down
+				y-=1
+			elif key=='a' : #point left
+				x-=1
+			elif key=='d' : #point right
+				x+=1
+			elif key=='c' :
+				break
+
+			if args.loop==False :
+				if key=='e' :#volume up
+					vol_mult+=.05
+				elif key=='q' : #volume down
+					vol_mult-=.05
+			else :
+				base_mult=get_base_mult([x,y])
+				if base_mult!=vol_mult :
+					vol_mult=base_mult
+					equalize_to_point(vol_mult, [x,y])
+
+			print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
+			equalize_to_point(vol_mult, [x,y])
+			time.sleep(.1)
+
+		except KeyboardInterrupt:
+			pass
+
 
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
@@ -201,48 +261,15 @@ def main() :
 	if args.volume!=None :
 		vol_mult=args.volume/100
 
+	#if a single position is being passed in as a point
+	if args.position!=None :
+		point=[float(args.position[0]),float(args.position[1])]
+		print("point ", point)
+
+
 	#interactive mode
 	if args.interactive :
-		print("entering interactive mode")
-		if args.loop==False :
-			print("q & e control volume")
-		else :
-			print("loop mode is activated, this will only update when position is updated")
-		print("wasd controls location")
-		print("c exits")
-		x=point[0]
-		y=point[1]
-		while True :
-			try :
-				key=readchar.readkey()
-				if key=='w' : #point up
-					y+=1
-				elif key=='s' : #point down
-					y-=1
-				elif key=='a' : #point left
-					x-=1
-				elif key=='d' : #point right
-					x+=1
-				elif key=='c' :
-					break
-
-				if args.loop==False :
-					if key=='e' :#volume up
-						vol_mult+=.05
-					elif key=='q' : #volume down
-						vol_mult-=.05
-				else :
-					base_mult=get_base_mult([x,y])
-					if base_mult!=vol_mult :
-						vol_mult=base_mult
-						equalize_to_point(vol_mult, [x,y])
-
-				print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
-				equalize_to_point(vol_mult, [x,y])
-				time.sleep(.1)
-
-			except KeyboardInterrupt:
-				pass
+		interactive_mode(point, vol_mult)
 	elif args.loop :
 		print("entering loop mode")
 		try :
