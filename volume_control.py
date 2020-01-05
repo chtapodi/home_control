@@ -110,7 +110,7 @@ def get_base_mult(point) :
 			closest=name
 	#estimates the mult val for this device.
 	closest_mult=get_device_vol_mult(closest, point)
-	print(closest)
+	#print(closest)
 	return closest_mult
 
 
