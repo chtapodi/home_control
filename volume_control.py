@@ -44,8 +44,11 @@ args = parser.parse_args()
 #[coordinates, max_distance]
 #The units do not matter as long as they are all the same
 device_settings={"titan":[[7,0],25],
-			"janus & epimetheus":[[4,7],15],
-			"Ledge":[[4,23],15]
+			"janus":[[7,0],20],
+			"epimetheus":[[7,0],20],
+			"lapetus":[[9,8],15],
+			"rhea":[[0,7],15],
+			"enceladus":[[4,23],15]
 }
 
 
@@ -63,7 +66,7 @@ def connect() :
 			print( "Detected ", name)
 		if name in device_settings: #if its one of mine
 			connected_devices[name]=device
-			print("connected to {0}/{1}".format(len(connected_devices), len(device_settings)))
+			print("connected to {0}/{1}: {2}".format(len(connected_devices), len(device_settings), name))
 
 
 #equalizes all devices to coordinates
@@ -178,11 +181,21 @@ def text_visualize(name, ratio) :
 	print("{}\t".format(to_print), name)
 
 
+#outputs information about all connected device volumes
+def output_volumes() :
+	for name in connected_devices :
+		device=connected_devices[name]
+		vol=get_device_vol(device)
+		coords=coords=get_device_coords(name)
+		print("{0} is at {1} and volume currently {2:.2f}%".format(name, coords, 100*vol))
+
+
+
 #Graphs volume representations and locations of devices, good for troubleshooting
 def visualize(point)  :
 	fig, ax = plt.subplots(1, 1)
-	plt.ylim(0,20)
-	plt.xlim(0,20)
+	plt.ylim(-10,40)
+	plt.xlim(-20,20)
 	plt.gca().set_aspect('equal', adjustable='box')
 	plt.grid(linestyle='-', linewidth=1)
 	for name in connected_devices :
@@ -214,14 +227,16 @@ def interactive_mode(point, vol_mult) :
 	while True :
 		try :
 			key=readchar.readkey()
-			if key=='w' : #point up
+			if key=='s' : #point up
 				y+=1
-			elif key=='s' : #point down
+			elif key=='w' : #point down
 				y-=1
-			elif key=='a' : #point left
+			elif key=='d' : #point left
 				x-=1
-			elif key=='d' : #point right
+			elif key=='a' : #point right
 				x+=1
+			elif key=='v' : #prints volumes
+				output_volumes()
 			elif key=='c' :
 				break
 
@@ -247,7 +262,7 @@ def interactive_mode(point, vol_mult) :
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
-	point=[7,5] #about where I sit in the kitchen
+	point=[5,3] #about where I sit in the kitchen
 
 
 
@@ -284,7 +299,7 @@ def main() :
 
 	else :
 		equalize_to_point(vol_mult, point)
-		# visualize(point)
+		visualize(point)
 
 
 
