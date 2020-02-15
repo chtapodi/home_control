@@ -1,4 +1,4 @@
-# spacial_volume_control
+# spatial_volume_control
 ## volume_control
 This is a project which scales all the volumes of my chromecasts so they are of equal volume at a specific point.
 Each device must have assigned 2D coordinates, and a foci must be chosen using the same coordinate system. 
