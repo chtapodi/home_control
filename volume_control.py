@@ -43,12 +43,24 @@ args = parser.parse_args()
 
 #[coordinates, max_distance]
 #The units do not matter as long as they are all the same
-device_settings={"titan":[[7,0],25],
-			"janus":[[7,0],20],
-			"epimetheus":[[7,0],20],
-			"lapetus":[[9,8],15],
-			"rhea":[[0,7],15],
-			"enceladus":[[4,23],15]
+# device_settings={"titan":[[7,0],25],
+# 			"janus":[[7,0],20],
+# 			"epimetheus":[[7,0],20],
+# 			"lapetus":[[9,8],15],
+# 			"rhea":[[0,7],15],
+# 			"enceladus":[[4,23],15]
+# }
+
+device_settings={"titan":[[35,4],15], #1
+			"rhea":[[18,45],15], #2
+			"lapetus":[[8,0],15], #3
+			"deimos":[[8,7],15], #4
+			"phobos":[[50,35],15], #5
+			"hyperion":[[55,0],15], #6
+			"janus":[[12,42],15], #7
+			"epimetheus":[[12,42],15], #8
+			"Ganymede":[[3,45],20], #9
+			"enceladus":[[0,20],15] #10
 }
 
 
@@ -96,7 +108,7 @@ def get_device_vol_mult(name, point) :
 	device=connected_devices[name]
 	device_dist=get_device_dist(name, point)
 	device_max_dist=get_max_dist(name)
-	calc_vol=translate(device_dist, 0, device_max_dist,0,1)
+	calc_vol=translate(device_dist, 0, device_max_dist,0.05,1)
 	real_vol=get_device_vol(device)
 	estimated_mult=real_vol/calc_vol
 	return estimated_mult
@@ -194,8 +206,8 @@ def output_volumes() :
 #Graphs volume representations and locations of devices, good for troubleshooting
 def visualize(point)  :
 	fig, ax = plt.subplots(1, 1)
-	plt.ylim(-10,40)
-	plt.xlim(-20,20)
+	plt.ylim(-10,60)
+	plt.xlim(-10,60)
 	plt.gca().set_aspect('equal', adjustable='box')
 	plt.grid(linestyle='-', linewidth=1)
 	for name in connected_devices :
@@ -242,9 +254,9 @@ def interactive_mode(point, vol_mult) :
 
 			if args.loop==False :
 				if key=='e' :#volume up
-					vol_mult+=.05
+					vol_mult+=.025
 				elif key=='q' : #volume down
-					vol_mult-=.05
+					vol_mult-=.025
 			else :
 				base_mult=get_base_mult([x,y])
 				if base_mult!=vol_mult :
@@ -262,7 +274,7 @@ def interactive_mode(point, vol_mult) :
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
-	point=[5,3] #about where I sit in the kitchen
+	point=[42,7] #defailt starting locations
 
 
 
