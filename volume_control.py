@@ -51,16 +51,11 @@ args = parser.parse_args()
 # 			"enceladus":[[4,23],15]
 # }
 
-device_settings={"titan":[[35,4],15], #1
-			"rhea":[[18,45],15], #2
-			"lapetus":[[8,0],15], #3
-			"deimos":[[8,7],15], #4
-			"phobos":[[50,35],15], #5
-			"hyperion":[[55,0],15], #6
-			"janus":[[12,42],15], #7
-			"epimetheus":[[12,42],15], #8
-			"Ganymede":[[3,45],20], #9
-			"enceladus":[[0,20],15] #10
+device_settings={"Titan":[[12,15],25], #1
+			"janus":[[7,12],15], #2
+			"Kitchen speaker":[[20,1],15], #3
+			"Epimetheus":[[3,12],15], #4
+			"Bedroom":[[9,22],15] #5
 }
 
 
@@ -274,7 +269,7 @@ def interactive_mode(point, vol_mult) :
 def main() :
 	#This is a placeholder until I have a dynamic method for tracking my location
 	#START
-	point=[42,7] #defailt starting locations
+	point=[16,12] #defailt starting locations
 
 
 
