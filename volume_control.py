@@ -54,8 +54,8 @@ args = parser.parse_args()
 device_settings={"Titan":[[12,15],25], #1
 			"janus":[[7,12],15], #2
 			"Kitchen speaker":[[20,1],15], #3
-			"Epimetheus":[[3,12],15], #4
-			"Bedroom":[[9,22],15] #5
+			"Epimetheus":[[3,12],15] #4
+			# "Bedroom":[[9,22],15] #5
 }
 
 
@@ -196,6 +196,12 @@ def output_volumes() :
 		coords=coords=get_device_coords(name)
 		print("{0} is at {1} and volume currently {2:.2f}%".format(name, coords, 100*vol))
 
+	
+
+def get_unit_vector(device_name, point) :
+	device=connected_devices[device_name]
+	coords=get_device_coords(name)
+
 
 
 #Graphs volume representations and locations of devices, good for troubleshooting
@@ -208,7 +214,7 @@ def visualize(point)  :
 	for name in connected_devices :
 		device=connected_devices[name]
 		vol=get_device_vol(device)
-		coords=coords=get_device_coords(name)
+		coords=get_device_coords(name)
 		device_max_dist=get_max_dist(name)
 
 		radius=translate(vol,0,1, 0, device_max_dist)
@@ -235,13 +241,13 @@ def interactive_mode(point, vol_mult) :
 		try :
 			key=readchar.readkey()
 			if key=='s' : #point up
-				y+=1
-			elif key=='w' : #point down
 				y-=1
+			elif key=='w' : #point down
+				y+=1
 			elif key=='d' : #point left
-				x-=1
-			elif key=='a' : #point right
 				x+=1
+			elif key=='a' : #point right
+				x-=1
 			elif key=='v' : #prints volumes
 				output_volumes()
 			elif key=='c' :
