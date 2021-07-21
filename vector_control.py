@@ -4,15 +4,15 @@ import sys
 import readchar
 import pychromecast
 import math
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import minimize
 
 
 class volume_controller :
 
-		def __init__(self, device_map, foci=None) :
-			import matplotlib.pyplot as plt
-			import numpy as np
-			from scipy.optimize import minimize
-
+		def __init__(self, device_map, foci=None, show_plot=False, verbose=False) :
+			self.verbose=verbose
 			self.devices=device_map
 			self.connect()
 
@@ -35,11 +35,25 @@ class volume_controller :
 			# self.adjust_vols([1,1,1,1])
 			self.minimize_vols()
 
-			for device in self.devices.values() :
-				print(self.get_device_vol(device))
-			self.plot_vectors()
+			if self.verbose:
+				# for name,device in self.devices.items() :
+				# 	print(name)
+				# 	print(self.get_device_vol(device))
+				print(self)
+			if show_plot:
+				self.plot_vectors()
 
 
+		#interaction methods
+		def get_foci(self) :
+			return self.foci
+
+		def set_foci(self,foci) :
+			self.foci=np.array(foci)
+
+		def vector_to_foci(self,foci) :
+			self.set_foci(foci)
+			self.minimize_vols()
 
 		#Visualization operations-----------------
 		def plot_vectors(self) :
@@ -71,25 +85,36 @@ class volume_controller :
 			plt.show()
 
 
+
+		def __str__ (self,) :
+			string=""
+			for name,device in self.devices.items() :
+				string+="{}:{}%\n".format(name,self.get_device_vol(device))
+			return string
+
 		#Minimization Operations------------------
 
 		def minimize_vols(self) :
 			init_vols=[.4 for device in self.devices.keys()]
 			# self.closest_vol=np.clip(self.get_device_vol(self.closest_device),.4,1)
-			self.closest_vol=self.distance_to_volume(np.linalg.norm(self.foci-self.closest_device["location"]))
-			print(self.closest_device)
-			print(self.closest_vol)
+			self.closest_device=self.get_closest()
+			# self.closest_vol=self.distance_to_volume(np.linalg.norm(self.foci-self.closest_device["location"])) #not convinced this is legit
+			self.closest_vol=self.get_device_vol(self.closest_device)
+			# print("closest device",self.closest_device["name"])
+
+			if self. verbose :
+				print("closest device volume ",self.closest_vol)
 
 
 			bound_list=[(.35,1) for device in self.devices.keys()]
 			res = minimize(self.adjust_vols, init_vols,method='nelder-mead',
 			   options={'xatol': 1e-8, 'disp': True})
-			print(res.x)
+
+			if self. verbose :
+				print("closest device volume ",self.closest_vol)
+				print(res.x)
 			for vol,device in  zip(res.x,self.devices.values()):
 				self.set_device_vol(device,vol)
-
-
-
 
 		def adjust_vols(self, vol_list) :
 			# print(self.closest_index)
@@ -99,13 +124,26 @@ class volume_controller :
 		def get_error(self, vol_list) : #returns summed vector error
 			xsum=0
 			ysum=0
+			mag_diff=0
+			vol_sum=0
 			for device, vol in zip(self.devices.values(),vol_list) :
 				np.clip(vol,.2,1)
 				vector=self.centralize_vector(self.get_device_vector(device, hyp_vol=vol))
+
+				vol_sum+=vol
 				xsum+=vector[0]
 				ysum+=vector[1]
+				#This should penalize it for making the volumes too different
+				mag_diff+=abs(self.closest_vol-vol)
 				# sum=np.add(vector,sum)
-			total=abs(xsum)+abs(ysum)
+				# if self.verbose:
+					# print("xsum",xsum)
+					# print("ysum",ysum)
+					# print("mag_diff",mag_diff)
+					# print("vol_sum",vol_sum)
+			#normalize the totals and make mag_diff less important
+			#1.2 is completely arbitrary, but it seems to work decently
+			total=abs(xsum/vol_sum)+abs(ysum/vol_sum) + mag_diff/(1.2*vol_sum)
 			return total #np.linalg.norm(sum)
 
 
@@ -129,17 +167,19 @@ class volume_controller :
 
 		#Misc operations-------------------------
 		def get_closest(self) : #gets the closest device to the foci
-			closest={}
+			closest=None
+			closest_name=None
 			min_dist=sys.maxsize #all distances will be less than this
 			i=0
 			for name, device in self.devices.items() :
 				dist=np.linalg.norm(self.foci-device["location"])
 				if dist<min_dist :
 					closest=device
+					closest_name=name
 					min_dist=dist
 					self.closest_index=i
 				i+=1
-
+			print
 			return closest
 
 
@@ -207,6 +247,59 @@ class volume_controller :
 
 
 
+
+def interactive_mode(controller) :
+	print("entering interactive mode")
+
+	print("loop mode is activated, this will only update when position is updated")
+	print("wasd controls location")
+	print("c exits")
+	foci=controller.get_foci()
+	x=foci[0]
+	y=foci[1]
+	inc=1
+	while True :
+		# try :
+			foci=controller.get_foci()
+			x=foci[0]
+			y=foci[1]
+			key=readchar.readkey()
+			if key=='s' : #point up
+				y-=inc
+			elif key=='w' : #point down
+				y+=inc
+			elif key=='d' : #point left
+				x+=inc
+			elif key=='a' : #point right
+				x-=inc
+			elif key=='p' : #prints volumes
+				controller.plot_vectors()
+			elif key=='v' : #prints volumes
+				print(controller)
+			elif key=='c' :
+				break
+
+			# if args.loop==False :
+			# 	if key=='e' :#volume up
+			# 		vol_mult+=.025
+			# 	elif key=='q' : #volume down
+			# 		vol_mult-=.025
+			# else :
+			# 	base_mult=get_base_mult([x,y])
+			# 	if base_mult!=vol_mult :
+			# 		vol_mult=base_mult
+			# 		equalize_to_point(vol_mult, [x,y])
+			#
+			# print("[{0},{1}]:{2:3f}".format(x,y, vol_mult))
+			# equalize_to_point(vol_mult, [x,y])
+			print("foci {} {}".format(x,y))
+			controller.set_foci([x,y])
+			controller.minimize_vols()
+			time.sleep(.1)
+
+		# except KeyboardInterrupt:
+		# 	pass
+
 def main() :
 	# device_settings={"Titan":[[12,15],25], #1
 	# 			"janus":[[7,12],15], #2
@@ -236,8 +329,8 @@ def main() :
 		foci=location_map[args.location]
 	else : foci=[10.5,4]
 
-	controller=volume_controller(device_settings, foci=foci	)
-
+	controller=volume_controller(device_settings, foci=foci, verbose=True)
+	interactive_mode(controller)
 
 
 
